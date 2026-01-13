@@ -165,4 +165,34 @@ class ApiClient {
       rethrow;
     }
   }
+
+  // Add this method to your ApiClient class
+  Future<Map<String, dynamic>> gets(
+    String endpoint, {
+    bool requiresAuth = true,
+    Map<String, dynamic>? queryParameters, // Add this parameter
+  }) async {
+    try {
+      // Build URL with query parameters
+      String url = await ApiEndpoints.buildUrl(endpoint);
+
+      if (queryParameters != null && queryParameters.isNotEmpty) {
+        final uri = Uri.parse(url);
+        url = uri.replace(queryParameters: queryParameters).toString();
+      }
+
+      final response = await _client
+          .get(
+            Uri.parse(url),
+            headers: await _getHeaders(requiresAuth: requiresAuth),
+          )
+          .timeout(ApiConfig.connectTimeout);
+
+      return await _handleResponse(response);
+    } on http_package.ClientException catch (e) {
+      throw ApiException(message: 'Network error: ${e.message}');
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

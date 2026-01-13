@@ -18,35 +18,28 @@ class LoginView extends GetView<LoginController> {
       body: SafeArea(
         child: Column(
           children: [
-            /// Top Header
+            /// Header (same, just cleaner spacing)
             Container(
-              height: height * 0.28,
+              height: height * 0.25,
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: width * 0.08),
-              decoration: const BoxDecoration(
-                color: Color(0xFF0D1026),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(0),
-                  bottomRight: Radius.circular(0),
-                ),
-              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     'Log In',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: width * 0.07,
-                      fontWeight: FontWeight.bold,
+                      fontSize: width * 0.075,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
                     'Please sign in to your existing account',
                     style: TextStyle(
-                      color: Colors.white70,
                       fontSize: width * 0.04,
+                      color: Colors.grey.shade600,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -58,20 +51,32 @@ class LoginView extends GetView<LoginController> {
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(
                   horizontal: width * 0.08,
-                  vertical: height * 0.03,
+                  vertical: height * 0.02,
                 ),
                 child: Form(
                   key: controller.formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      /// Email
-                      const Text('EMAIL'),
-                      const SizedBox(height: 6),
+                      /// EMAIL
+                      Text(
+                        'EMAIL',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       TextFormField(
                         controller: controller.emailController,
                         decoration: InputDecoration(
                           hintText: 'example@gmail.com',
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
                           filled: true,
                           fillColor: Colors.grey.shade100,
                           border: OutlineInputBorder(
@@ -81,21 +86,34 @@ class LoginView extends GetView<LoginController> {
                         ),
                         validator: (value) =>
                             value!.isEmpty ? 'Email is required' : null,
-                        textInputAction: TextInputAction.next, // Add this
-                        keyboardType: TextInputType.emailAddress, // Add this
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
-                      /// Password
-                      const Text('PASSWORD'),
-                      const SizedBox(height: 6),
+                      /// PASSWORD
+                      Text(
+                        'PASSWORD',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Obx(
                         () => TextFormField(
                           controller: controller.passwordController,
-                          obscureText: controller.model.value.obscurePassword,
+                          obscureText:
+                              controller.model.value.obscurePassword,
                           decoration: InputDecoration(
                             hintText: '********',
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 14,
+                            ),
                             filled: true,
                             fillColor: Colors.grey.shade100,
                             suffixIcon: IconButton(
@@ -103,8 +121,11 @@ class LoginView extends GetView<LoginController> {
                                 controller.model.value.obscurePassword
                                     ? Icons.visibility_off
                                     : Icons.visibility,
+                                size: 20,
+                                color: Colors.grey.shade600,
                               ),
-                              onPressed: controller.togglePasswordVisibility,
+                              onPressed:
+                                  controller.togglePasswordVisibility,
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -113,15 +134,14 @@ class LoginView extends GetView<LoginController> {
                           ),
                           validator: (value) =>
                               value!.isEmpty ? 'Password is required' : null,
-                          textInputAction: TextInputAction.done, // Add this
-                          onFieldSubmitted: (_) =>
-                              controller.login(), // Add this to submit on enter
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => controller.login(),
                         ),
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
 
-                      /// Remember & Forgot
+                      /// REMEMBER & FORGOT
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -129,8 +149,11 @@ class LoginView extends GetView<LoginController> {
                             () => Row(
                               children: [
                                 Checkbox(
-                                  value: controller.model.value.rememberMe,
-                                  onChanged: controller.toggleRememberMe,
+                                  value:
+                                      controller.model.value.rememberMe,
+                                  onChanged:
+                                      controller.toggleRememberMe,
+                                  activeColor: Colors.orange,
                                 ),
                                 const Text('Remember me'),
                               ],
@@ -138,28 +161,36 @@ class LoginView extends GetView<LoginController> {
                           ),
                           TextButton(
                             onPressed: () {},
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                            ),
                             child: const Text(
                               'Forgot Password',
-                              style: TextStyle(color: Colors.orange),
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
 
-                      /// Login Button
+                      /// LOGIN BUTTON
                       SizedBox(
                         width: double.infinity,
-                        height: height * 0.065,
+                        height: height * 0.06,
                         child: Obx(
                           () => ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: controller.isLoading.value
-                                  ? Colors.grey
-                                  : Colors.orange,
+                              backgroundColor:
+                                  controller.isLoading.value
+                                      ? Colors.grey
+                                      : Colors.orange,
+                              elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                             ),
                             onPressed: controller.isLoading.value
@@ -177,28 +208,31 @@ class LoginView extends GetView<LoginController> {
                                 : const Text(
                                     'LOG IN',
                                     style: TextStyle(
+                                      fontWeight: FontWeight.w600,
                                       color: Colors.white,
-                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1,
                                     ),
                                   ),
                           ),
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 28),
 
-                      /// Sign Up
+                      /// SIGN UP
                       Center(
                         child: RichText(
                           text: TextSpan(
                             text: "Don’t have an account? ",
-                            style: TextStyle(color: Colors.grey.shade600),
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                            ),
                             children: [
                               TextSpan(
                                 text: 'SIGN UP',
                                 style: const TextStyle(
-                                  color: Colors.orange,
-                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.w600,
                                 ),
                                 recognizer: TapGestureRecognizer()
                                   ..onTap = () {
@@ -210,17 +244,24 @@ class LoginView extends GetView<LoginController> {
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 30),
 
-                      /// Social Login
+                      /// SOCIAL LOGIN (kept minimal)
                       Column(
                         children: [
-                          const Text('Or'),
+                          Text(
+                            'Or',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceEvenly,
+                            children: const [
                               CircleAvatar(
+                                radius: 22,
                                 backgroundColor: Color(0xFF3b5998),
                                 child: Icon(
                                   Icons.facebook,
@@ -228,12 +269,20 @@ class LoginView extends GetView<LoginController> {
                                 ),
                               ),
                               CircleAvatar(
-                                backgroundColor: Color(0xFF1DA1F2),
-                                child: Icon(Icons.apple, color: Colors.white),
+                                radius: 22,
+                                backgroundColor: Colors.black,
+                                child: Icon(
+                                  Icons.apple,
+                                  color: Colors.white,
+                                ),
                               ),
                               CircleAvatar(
-                                backgroundColor: Colors.black,
-                                child: Icon(Icons.apple, color: Colors.white),
+                                radius: 22,
+                                backgroundColor: Color(0xFFDB4437),
+                                child: Icon(
+                                  Icons.g_mobiledata,
+                                  color: Colors.white,
+                                ),
                               ),
                             ],
                           ),

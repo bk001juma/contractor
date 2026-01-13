@@ -107,23 +107,78 @@ class JobService {
 
   Future<List<JobResponse>> getMyJobs({int page = 0, int size = 10}) async {
     try {
+      print('=== START getMyJobs ===');
       final endpoint = '${ApiEndpoints.myJobs}?page=$page&size=$size';
+      print('Endpoint: $endpoint');
+
+      // Try to get the raw response first
       final response = await _apiClient.get(endpoint);
+      print('Raw response type: ${response.runtimeType}');
+      print('Raw response keys: ${response.keys}');
+      print('Raw response: $response');
 
-      final apiResponse = ApiResponse<List<dynamic>>.fromJson(
-        response,
-        (data) => List<Map<String, dynamic>>.from(data['data'] ?? []),
-      );
+      // If response has 'data' key
+      if (response.containsKey('data')) {
+        final data = response['data'];
+        print('Data type: ${data.runtimeType}');
+        print('Data: $data');
 
-      if (!apiResponse.success) {
-        throw ApiException(message: apiResponse.message);
+        // Try to extract list
+        List<dynamic> jobsList = [];
+
+        if (data is List<dynamic>) {
+          print('Data is directly a List');
+          jobsList = data;
+        } else if (data is Map<String, dynamic>) {
+          print('Data is a Map, checking keys: ${data.keys}');
+
+          // Try common keys
+          if (data.containsKey('content')) {
+            print('Found "content" key');
+            jobsList = data['content'] as List<dynamic>;
+          } else if (data.containsKey('jobs')) {
+            print('Found "jobs" key');
+            jobsList = data['jobs'] as List<dynamic>;
+          } else {
+            // Try to find any list value
+            for (var key in data.keys) {
+              final value = data[key];
+              if (value is List<dynamic>) {
+                print('Found list in key: $key');
+                jobsList = value;
+                break;
+              }
+            }
+          }
+        }
+
+        if (jobsList.isNotEmpty) {
+          print('Found ${jobsList.length} jobs');
+          return jobsList.map((json) {
+            try {
+              return JobResponse.fromJson(json as Map<String, dynamic>);
+            } catch (e) {
+              print('Error parsing job: $e');
+              print('Problematic JSON: $json');
+              rethrow;
+            }
+          }).toList();
+        } else {
+          print('No jobs found in response');
+          return [];
+        }
+      } else {
+        print('Response does not have "data" key');
+        print('Response structure: $response');
+        return [];
       }
-
-      return (apiResponse.data as List<dynamic>).map((jobJson) {
-        return JobResponse.fromJson(jobJson as Map<String, dynamic>);
-      }).toList();
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('=== ERROR in getMyJobs ===');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
       rethrow;
+    } finally {
+      print('=== END getMyJobs ===');
     }
   }
 
