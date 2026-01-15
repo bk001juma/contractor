@@ -1,7 +1,10 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:contractor/app/home/controller/home_controller.dart';
+import 'package:contractor/app/home/model/home_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 class HomeView extends GetView<HomeController> {
@@ -9,86 +12,108 @@ class HomeView extends GetView<HomeController> {
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final width = media.size.width;
-    final height = media.size.height;
-    final textScale = media.textScaleFactor.clamp(0.9, 1.1);
+    final width = MediaQuery.of(context).size.width;
+    final height = MediaQuery.of(context).size.height;
+    final statusBarHeight = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: SafeArea(
-        child: Obx(
-          () => controller.isLoading.value
-              ? _buildLoadingView()
-              : _buildHomeView(width, height, textScale),
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        // Make status bar icons white (light) so they're visible on dark background
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
-    );
-  }
-
-  Widget _buildLoadingView() {
-    return const Center(
-      child: CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation(Color(0xFF0D1026)),
-      ),
-    );
-  }
-
-  Widget _buildHomeView(double width, double height, double textScale) {
-    return RefreshIndicator(
-      onRefresh: () async => controller.refreshData(),
-      child: CustomScrollView(
-        slivers: [
-          /// APP BAR
-          SliverAppBar(
-            backgroundColor: const Color(0xFF0D1026),
-            expandedHeight: height * 0.22,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.pin,
-              background: LayoutBuilder(
-                builder: (context, constraints) {
-                  return Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: width * 0.05,
-                      vertical: constraints.maxHeight * 0.15,
-                    ),
-                    child: Column(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
+        body: Column(
+          children: [
+            // Fixed AppBar - Extends behind status bar
+            Container(
+              height:
+                  120 +
+                  statusBarHeight, // Add status bar height to total height
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [const Color(0xFF0D1026), const Color(0xFF1A1F3E)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  top: statusBarHeight, // Start content below status bar
+                  left: 16,
+                  right: 16,
+                  bottom: 16,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        /// HEADER
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getGreeting(),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: width * 0.038,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                controller.model.value.userName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: width * 0.055,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 6),
+                              Row(
                                 children: [
-                                  Text(
-                                    'Welcome back,',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.8),
-                                      fontSize: width * 0.038 * textScale,
-                                    ),
+                                  Icon(
+                                    Icons.location_on_outlined,
+                                    color: Colors.white.withOpacity(0.8),
+                                    size: width * 0.04,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    controller.model.value.userName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: width * 0.055 * textScale,
-                                      fontWeight: FontWeight.bold,
+                                  SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      controller.model.value.userLocation,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.8),
+                                        fontSize: width * 0.035,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Column(
+                          children: [
                             GestureDetector(
                               onTap: () => Get.toNamed('/profile'),
                               child: CircleAvatar(
-                                radius: width * 0.06,
+                                radius: width * 0.07,
                                 backgroundColor: Colors.white,
                                 child: Icon(
                                   Icons.person,
@@ -97,35 +122,11 @@ class HomeView extends GetView<HomeController> {
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        /// LOCATION + ROLE
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              color: Colors.white.withOpacity(0.8),
-                              size: width * 0.045,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                controller.model.value.userLocation,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
-                                  fontSize: width * 0.038 * textScale,
-                                ),
-                              ),
-                            ),
+                            SizedBox(height: 6),
                             Container(
                               padding: EdgeInsets.symmetric(
-                                horizontal: width * 0.04,
-                                vertical: height * 0.005,
+                                horizontal: 12,
+                                vertical: 4,
                               ),
                               decoration: BoxDecoration(
                                 color:
@@ -134,11 +135,19 @@ class HomeView extends GetView<HomeController> {
                                     ? Colors.orange.withOpacity(0.2)
                                     : Colors.blue.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color:
+                                      controller.model.value.userType ==
+                                          'CONTRACTOR'
+                                      ? Colors.orange
+                                      : Colors.blue,
+                                  width: 1,
+                                ),
                               ),
                               child: Text(
                                 controller.model.value.userType,
                                 style: TextStyle(
-                                  fontSize: width * 0.034 * textScale,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color:
                                       controller.model.value.userType ==
@@ -152,298 +161,279 @@ class HomeView extends GetView<HomeController> {
                         ),
                       ],
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
             ),
-          ),
+            // Rest of your content in an Expanded widget
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async => controller.refreshData(),
+                child: ListView(
+                  children: [
+                    // Quick Stats
+                    _buildQuickStats(width),
 
-          /// STATS
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(width * 0.05),
-              child: _buildStatsCards(width, textScale),
+                    // Jobs Carousel
+                    _buildJobsCarousel(width, height),
+
+                    // Quick Actions
+                    _buildQuickActions(width),
+
+                    // Recent Activities
+                    _buildRecentActivities(width),
+
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Rest of your methods remain the same...
+  Widget _buildQuickStats(double width) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _StatCard(
+              title: controller.model.value.userType == 'CONTRACTOR'
+                  ? 'Available Jobs'
+                  : 'Active Jobs',
+              value: controller.model.value.activeJobs.toString(),
+              icon: Icons.work_outline,
+              color: const Color(0xFF4CAF50),
+              width: width,
             ),
           ),
-
-          /// QUICK ACTIONS
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(left: width * 0.05),
-              child: _buildQuickActions(width, textScale),
+          SizedBox(width: 12),
+          Expanded(
+            child: _StatCard(
+              title: controller.model.value.userType == 'CONTRACTOR'
+                  ? 'My Bids'
+                  : 'My Jobs',
+              value: controller.model.value.completedJobs.toString(),
+              icon: controller.model.value.userType == 'CONTRACTOR'
+                  ? Icons.assignment_outlined
+                  : Icons.assignment_turned_in_outlined,
+              color: const Color(0xFF2196F3),
+              width: width,
             ),
           ),
-
-          /// CATEGORIES
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(left: width * 0.05, top: width * 0.05),
-              child: _buildCategoriesGrid(width, height, textScale),
+          SizedBox(width: 12),
+          Expanded(
+            child: _StatCard(
+              title: controller.model.value.userType == 'CONTRACTOR'
+                  ? 'Earnings'
+                  : 'Spent',
+              value:
+                  'TZS ${controller.model.value.totalEarnings.toStringAsFixed(0)}',
+              icon: Icons.attach_money_outlined,
+              color: const Color(0xFF9C27B0),
+              width: width,
             ),
           ),
-
-          /// ACTIVITIES
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(width * 0.05),
-              child: _buildActivitiesList(width, textScale),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 30)),
         ],
       ),
     );
   }
 
-  /// STATS (IN A SINGLE ROW)
-  Widget _buildStatsCards(double width, double textScale) {
-    return Row(
+  Widget _buildJobsCarousel(double width, double height) {
+    final carouselJobs = controller.model.value.carouselJobs;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// ACTIVE JOBS CARD
-        Expanded(
-          child: _statCard(
-            title: 'Active Jobs',
-            value: controller.model.value.activeJobs.toString(),
-            icon: Icons.work_outline,
-            color: const Color(0xFF4CAF50),
-            width: width,
-            textScale: textScale,
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                controller.model.value.userType == 'CONTRACTOR'
+                    ? 'Available Jobs Nearby'
+                    : 'My Active Jobs',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF0D1026),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Get.toNamed(
+                  controller.model.value.userType == 'CONTRACTOR'
+                      ? '/available-jobs'
+                      : '/my-jobs',
+                ),
+                child: Text(
+                  'View All',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: const Color(0xFF2196F3),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(width: width * 0.02),
 
-        /// EARNINGS/SPENT CARD
-        Expanded(
-          child: _statCard(
-            title: controller.model.value.userType == 'CONTRACTOR'
-                ? 'Earnings'
-                : 'Spent',
-            value:
-                'TZS ${controller.model.value.totalEarnings.toStringAsFixed(0)}',
-            icon: Icons.attach_money_outlined,
-            color: const Color(0xFF2196F3),
-            width: width,
-            textScale: textScale,
+        if (carouselJobs.isNotEmpty)
+          CarouselSlider.builder(
+            options: CarouselOptions(
+              height: height * 0.25,
+              autoPlay: true,
+              enlargeCenterPage: true,
+              viewportFraction: 0.85,
+              autoPlayInterval: Duration(seconds: 5),
+            ),
+            itemCount: carouselJobs.length,
+            itemBuilder: (context, index, realIndex) {
+              final job = carouselJobs[index];
+              return _JobCarouselCard(job: job, width: width);
+            },
+          )
+        else
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
+              ],
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.work_outline, size: 48, color: Colors.grey[400]),
+                  SizedBox(height: 12),
+                  Text(
+                    controller.model.value.userType == 'CONTRACTOR'
+                        ? 'No available jobs nearby'
+                        : 'No active jobs',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        SizedBox(width: width * 0.02),
-
-        /// COMPLETED JOBS CARD
-        Expanded(
-          child: _statCard(
-            title: 'Completed',
-            value: controller.model.value.completedJobs.toString(),
-            icon: Icons.check_circle_outline,
-            color: const Color(0xFF9C27B0),
-            width: width,
-            textScale: textScale,
-          ),
-        ),
+        SizedBox(height: 16),
       ],
     );
   }
 
-  Widget _statCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-    required double width,
-    required double textScale,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(width * 0.04),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: width * 0.07),
-          SizedBox(height: width * 0.03),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: width * 0.055 * textScale,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: width * 0.034 * textScale,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildQuickActions(double width) {
+    final quickActions = controller.model.value.quickActions;
 
-  /// QUICK ACTIONS WITH HEADING
-Widget _buildQuickActions(double width, double textScale) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      /// HEADING
-      Padding(
-        padding: EdgeInsets.only(left: width * 0.02, bottom: width * 0.03),
-        child: Text(
-          'Quick Actions',
-          style: TextStyle(
-            fontSize: width * 0.05 * textScale,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF0D1026),
-          ),
-        ),
-      ),
-      
-      /// ACTIONS LIST
-      SizedBox(
-        height: width * 0.31,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: controller.model.value.quickActions.length,
-          itemBuilder: (_, index) {
-            final action = controller.model.value.quickActions[index];
-            return GestureDetector(
-               onTap: () => controller.handleQuickAction(action),
-              child: Container(
-                width: width * 0.22,
-                margin: EdgeInsets.only(right: width * 0.04),
-                padding: EdgeInsets.all(width * 0.04),
-                decoration: BoxDecoration(
-                  color: action.color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: action.color.withOpacity(0.3)),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(action.icon,
-                        style: TextStyle(fontSize: width * 0.075)),
-                    SizedBox(height: width * 0.02),
-                    Text(
-                      action.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: width * 0.034 * textScale,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    ],
-  );
-}
-
-  /// CATEGORIES
-  /// CATEGORIES
-  Widget _buildCategoriesGrid(double width, double height, double textScale) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// HEADING
         Padding(
-          padding: EdgeInsets.only(left: width * 0.02, bottom: width * 0.03),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
-            'Job Categories',
+            'Quick Actions',
             style: TextStyle(
-              fontSize: width * 0.05 * textScale,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: const Color(0xFF0D1026),
             ),
           ),
         ),
-
-        /// GRID VIEW
         SizedBox(
-          height: height * 0.3,
-          child: GridView.builder(
+          height: 100,
+          child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: controller.model.value.featuredCategories.length,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: width * 0.03,
-              crossAxisSpacing: width * 0.03,
-              childAspectRatio: 1.1,
-            ),
-            itemBuilder: (_, index) {
-              final category = controller.model.value.featuredCategories[index];
-              return Container(
-                padding: EdgeInsets.all(width * 0.04),
-                decoration: BoxDecoration(
-                  color: category.backgroundColor,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      category.icon,
-                      style: TextStyle(fontSize: width * 0.07),
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            itemCount: quickActions.length,
+            itemBuilder: (context, index) {
+              final action = quickActions[index];
+              return GestureDetector(
+                onTap: () => controller.handleQuickAction(action),
+                child: Container(
+                  width: 90,
+                  margin: EdgeInsets.only(right: 12),
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: action.color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: action.color.withOpacity(0.2),
+                      width: 1,
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          category.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: width * 0.04 * textScale,
-                            fontWeight: FontWeight.w600,
-                          ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(action.icon, style: TextStyle(fontSize: 24)),
+                      SizedBox(height: 8),
+                      Text(
+                        action.title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
-                        Text(
-                          '${category.jobCount} jobs',
-                          style: TextStyle(
-                            fontSize: width * 0.03 * textScale,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
           ),
         ),
+        SizedBox(height: 16),
       ],
     );
   }
 
-  /// ACTIVITIES
-  Widget _buildActivitiesList(double width, double textScale) {
-    return Column(
-      children: controller.model.value.recentActivities
-          .map(
-            (activity) => Container(
-              margin: EdgeInsets.only(bottom: width * 0.04),
-              padding: EdgeInsets.all(width * 0.04),
+  Widget _buildRecentActivities(double width) {
+    final activities = controller.model.value.recentActivities;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Recent Activities',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF0D1026),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Get.toNamed('/activities'),
+                child: Text(
+                  'See All',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: const Color(0xFF2196F3),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          ...activities.take(3).map((activity) {
+            return Container(
+              margin: EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -453,31 +443,33 @@ Widget _buildQuickActions(double width, double textScale) {
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: width * 0.06,
-                    backgroundColor: activity.iconColor.withOpacity(0.1),
-                    child: Icon(activity.icon, color: activity.iconColor),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: activity.iconColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      activity.icon,
+                      color: activity.iconColor,
+                      size: 20,
+                    ),
                   ),
-                  SizedBox(width: width * 0.04),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           activity.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: width * 0.045 * textScale,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
+                        SizedBox(height: 4),
                         Text(
                           activity.description,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: width * 0.037 * textScale,
+                            fontSize: 12,
                             color: Colors.grey[600],
                           ),
                         ),
@@ -486,16 +478,171 @@ Widget _buildQuickActions(double width, double textScale) {
                   ),
                   Text(
                     activity.time,
-                    style: TextStyle(
-                      fontSize: width * 0.032 * textScale,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
               ),
-            ),
-          )
-          .toList(),
+            );
+          }).toList(),
+        ],
+      ),
     );
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning,';
+    if (hour < 17) return 'Good Afternoon,';
+    return 'Good Evening,';
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final double width;
+
+  const _StatCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+    required this.width,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 24),
+          SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 4),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        ],
+      ),
+    );
+  }
+}
+
+class _JobCarouselCard extends StatelessWidget {
+  final JobCarouselItem job;
+  final double width;
+
+  const _JobCarouselCard({required this.job, required this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 4),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(job.status).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  job.status,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _getStatusColor(job.status),
+                  ),
+                ),
+              ),
+              Spacer(),
+              Text(
+                job.budget,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4CAF50),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Text(
+            job.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 8),
+          Text(
+            job.description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
+              SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  job.location,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+              ),
+              Icon(Icons.schedule_outlined, size: 16, color: Colors.grey),
+              SizedBox(width: 4),
+              Text(
+                job.time,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'in progress':
+        return Colors.blue;
+      case 'completed':
+        return Colors.purple;
+      case 'assigned':
+        return Colors.teal;
+      default:
+        return Colors.grey;
+    }
   }
 }

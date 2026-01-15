@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:contractor/app/home/model/home_model.dart';
+import 'package:contractor/app/model/job.dart';
 import 'package:contractor/core/services/auth_service.dart';
 import 'package:contractor/core/services/home_service.dart';
+import 'package:contractor/core/services/jobs_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -8,19 +11,30 @@ class HomeController extends GetxController {
   final Rx<HomeModel> model = HomeModel().obs;
   final AuthService _authService = AuthService();
   final HomeService _homeService = HomeService();
+  final JobsService _jobsService = JobsService();
 
   final RxBool isLoading = true.obs;
   final RxString errorMessage = ''.obs;
+
+  // Timer for auto-refresh
+  Timer? _refreshTimer;
 
   @override
   void onInit() {
     super.onInit();
     _loadHomeData();
+    // Start auto-refresh timer (every 60 seconds)
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      if (!isLoading.value) {
+        _refreshCarouselData();
+      }
+    });
   }
 
-  // Add this method to HomeController
-  void handleQuickAction(QuickAction action) {
-    Get.toNamed(action.route);
+  @override
+  void onClose() {
+    _refreshTimer?.cancel();
+    super.onClose();
   }
 
   Future<void> _loadHomeData() async {
@@ -33,27 +47,31 @@ class HomeController extends GetxController {
       final userType = await _authService.getUserType();
       final userLocation = await _authService.getUserLocation();
 
-      // Load home data based on user type
+      // Load home data
       final homeData = await _homeService.getHomeData(
         userType: userType ?? 'CLIENT',
       );
 
-      // Update model with loaded data
-      model.update((val) {
-        val!.userName = userData['fullName'] ?? userData['name'] ?? 'Guest';
-        val.userType = userType ?? 'CLIENT';
-        val.userLocation = userLocation ?? 'Dar es Salaam';
-        val.activeJobs = homeData['activeJobs'] ?? 0;
-        val.completedJobs = homeData['completedJobs'] ?? 0;
-        val.totalEarnings = (homeData['totalEarnings'] ?? 0.0).toDouble();
-        val.quickActions = _getQuickActions(userType ?? 'CLIENT');
-        val.featuredCategories = _mapToServiceCategories(
+      // Load carousel jobs
+      final carouselJobs = await _loadCarouselJobs(userType ?? 'CLIENT');
+
+      // Update model
+      model.value = HomeModel(
+        userName: userData['fullName'] ?? userData['name'] ?? 'Guest',
+        userType: userType ?? 'CLIENT',
+        userLocation: userLocation ?? 'Dar es Salaam',
+        activeJobs: homeData['activeJobs'] ?? 0,
+        completedJobs: homeData['completedJobs'] ?? 0,
+        totalEarnings: (homeData['totalEarnings'] ?? 0.0).toDouble(),
+        quickActions: _getQuickActions(userType ?? 'CLIENT'),
+        featuredCategories: _mapToServiceCategories(
           homeData['featuredCategories'] ?? [],
-        );
-        val.recentActivities = _mapToActivities(
+        ),
+        recentActivities: _mapToActivities(
           homeData['recentActivities'] ?? [],
-        );
-      });
+        ),
+        carouselJobs: carouselJobs,
+      );
     } catch (e) {
       errorMessage.value = 'Failed to load data: $e';
       Get.snackbar(
@@ -63,26 +81,151 @@ class HomeController extends GetxController {
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
-
-      // Load default data on error
       _loadDefaultData();
     } finally {
       isLoading.value = false;
     }
   }
 
+  Future<List<JobCarouselItem>> _loadCarouselJobs(String userType) async {
+    try {
+      List<JobCarouselItem> carouselJobs = [];
+      
+      if (userType == 'CONTRACTOR') {
+        // Load available jobs for contractors
+        final availableJobs = await _jobsService.getAvailableJobs(
+          limit: 5,
+          page: 0,
+        );
+        
+        carouselJobs = availableJobs.map((job) {
+          return JobCarouselItem(
+            id: job.id.toString(),
+            title: job.title,
+            description: job.description,
+            location: job.location,
+            budget: _formatBudget(job),
+            status: _getJobStatusText(job.status),
+            time: _formatTimeAgo(job.createdAt),
+            urgency: _getUrgencyText(job.urgencyLevel),
+          );
+        }).toList();
+      } else {
+        // Load client's active jobs
+        final clientJobs = await _jobsService.getClientJobs(
+          statuses: ['ACTIVE', 'IN_PROGRESS', 'ASSIGNED'],
+          limit: 5,
+        );
+        
+        carouselJobs = clientJobs.map((job) {
+          return JobCarouselItem(
+            id: job.id.toString(),
+            title: job.title,
+            description: job.description,
+            location: job.location,
+            budget: _formatBudget(job),
+            status: _getJobStatusText(job.status),
+            time: _formatTimeAgo(job.createdAt),
+            urgency: _getUrgencyText(job.urgencyLevel),
+          );
+        }).toList();
+      }
+
+      return carouselJobs;
+    } catch (e) {
+      print('Error loading carousel jobs: $e');
+      return [];
+    }
+  }
+
+  Future<void> _refreshCarouselData() async {
+    try {
+      final userType = await _authService.getUserType();
+      final carouselJobs = await _loadCarouselJobs(userType ?? 'CLIENT');
+      
+      model.update((val) {
+        val!.carouselJobs = carouselJobs;
+      });
+    } catch (e) {
+      print('Error refreshing carousel: $e');
+    }
+  }
+
+  String _formatBudget(JobResponse job) {
+    if (job.budgetType == BudgetType.FIXED) {
+      return 'TZS ${job.budgetMin.toStringAsFixed(0)}';
+    } else if (job.budgetType == BudgetType.RANGE) {
+      return 'TZS ${job.budgetMin!.toStringAsFixed(0)} - ${job.budgetMax!.toStringAsFixed(0)}';
+    }
+    return 'TZS 0';
+  }
+
+  String _getJobStatusText(JobStatus? status) {
+    switch (status) {
+      case JobStatus.ACTIVE:
+        return 'Active';
+      case JobStatus.PENDING:
+        return 'Pending';
+      case JobStatus.IN_PROGRESS:
+        return 'In Progress';
+      case JobStatus.COMPLETED:
+        return 'Completed';
+      case JobStatus.ASSIGNED:
+        return 'Assigned';
+      case JobStatus.CANCELLED:
+        return 'Cancelled';
+      case JobStatus.EXPIRED:
+        return 'Expired';
+      default:
+        return 'Active';
+    }
+  }
+
+  String _getUrgencyText(UrgencyLevel? urgency) {
+    switch (urgency) {
+      case UrgencyLevel.LOW:
+        return 'Low';
+      case UrgencyLevel.MEDIUM:
+        return 'Medium';
+      case UrgencyLevel.HIGH:
+        return 'High';
+      case UrgencyLevel.URGENT:
+        return 'Urgent';
+      default:
+        return 'Medium';
+    }
+  }
+
+  String _formatTimeAgo(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays > 7) {
+      return '${date.day}/${date.month}/${date.year}';
+    } else if (difference.inDays >= 1) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours >= 1) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes >= 1) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
   void _loadDefaultData() {
-    model.update((val) {
-      val!.userName = 'Guest';
-      val.userType = 'CLIENT';
-      val.userLocation = 'Dar es Salaam';
-      val.activeJobs = 0;
-      val.completedJobs = 0;
-      val.totalEarnings = 0.0;
-      val.quickActions = _getQuickActions('CLIENT');
-      val.featuredCategories = _getDefaultFeaturedCategories();
-      val.recentActivities = _getDefaultRecentActivities();
-    });
+    model.value = HomeModel(
+      userName: 'Guest',
+      userType: 'CLIENT',
+      userLocation: 'Dar es Salaam',
+      activeJobs: 0,
+      completedJobs: 0,
+      totalEarnings: 0.0,
+      quickActions: _getQuickActions('CLIENT'),
+      featuredCategories: _getDefaultFeaturedCategories(),
+      recentActivities: _getDefaultRecentActivities(),
+      carouselJobs: [],
+    );
   }
 
   List<QuickAction> _getQuickActions(String userType) {
@@ -156,22 +299,6 @@ class HomeController extends GetxController {
     }).toList();
   }
 
-  List<Activity> _mapToActivities(List<dynamic> data) {
-    return data.map((item) {
-      return Activity(
-        title: item['title'] as String,
-        description: item['description'] as String,
-        time: item['time'] as String,
-        icon: item['icon'] is IconData
-            ? item['icon'] as IconData
-            : Icons.info_outline,
-        iconColor: item['iconColor'] is Color
-            ? item['iconColor'] as Color
-            : Colors.grey,
-      );
-    }).toList();
-  }
-
   List<ServiceCategory> _getDefaultFeaturedCategories() {
     return [
       ServiceCategory(
@@ -198,35 +325,57 @@ class HomeController extends GetxController {
         jobCount: 0,
         backgroundColor: const Color(0xFFFFF3E0),
       ),
-      ServiceCategory(
-        name: 'Masonry',
-        icon: '🧱',
-        jobCount: 0,
-        backgroundColor: const Color(0xFFFCE4EC),
-      ),
-      ServiceCategory(
-        name: 'AC Repair',
-        icon: '❄️',
-        jobCount: 0,
-        backgroundColor: const Color(0xFFE0F7FA),
-      ),
     ];
+  }
+
+  List<Activity> _mapToActivities(List<dynamic> data) {
+    return data.map((item) {
+      return Activity(
+        title: item['title'] as String,
+        description: item['description'] as String,
+        time: item['time'] as String,
+        icon: item['icon'] is IconData
+            ? item['icon'] as IconData
+            : Icons.info_outline,
+        iconColor: item['iconColor'] is Color
+            ? item['iconColor'] as Color
+            : Colors.grey,
+      );
+    }).toList();
   }
 
   List<Activity> _getDefaultRecentActivities() {
     return [
       Activity(
-        title: 'No recent activities',
-        description: 'Start by posting a job!',
-        time: '',
-        icon: Icons.info_outline,
-        iconColor: Colors.grey,
+        title: 'Welcome to Contractor App!',
+        description: 'Get started by exploring features',
+        time: 'Just now',
+        icon: Icons.rocket_launch_outlined,
+        iconColor: const Color(0xFF4CAF50),
+      ),
+      Activity(
+        title: 'Complete your profile',
+        description: 'Add more details to get better matches',
+        time: '5m ago',
+        icon: Icons.person_add_outlined,
+        iconColor: const Color(0xFF2196F3),
+      ),
+      Activity(
+        title: 'Verify your account',
+        description: 'Get verified for more opportunities',
+        time: '1h ago',
+        icon: Icons.verified_outlined,
+        iconColor: const Color(0xFF9C27B0),
       ),
     ];
   }
 
-  void refreshData() {
-    _loadHomeData();
+  void handleQuickAction(QuickAction action) {
+    Get.toNamed(action.route);
+  }
+
+  Future<void> refreshData() async {
+    await _loadHomeData();
   }
 
   void navigateTo(String route) {

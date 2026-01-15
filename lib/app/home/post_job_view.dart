@@ -1112,6 +1112,9 @@ class PostJobView extends GetView<PostJobController> {
         return 'Fixed';
       case BudgetType.HOURLY:
         return 'Hourly';
+      case BudgetType.RANGE:
+        // TODO: Handle this case.
+        throw UnimplementedError();
     }
   }
 

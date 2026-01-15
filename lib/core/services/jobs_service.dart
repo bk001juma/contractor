@@ -1,12 +1,72 @@
 import 'package:contractor/app/model/job.dart';
 import 'package:contractor/core/config/api_client.dart';
 import 'package:contractor/core/config/api_endpoints.dart';
-import 'package:get/get.dart';
+import 'package:get/get_state_manager/src/rx_flutter/rx_disposable.dart';
 
 class JobsService extends GetxService {
   final ApiClient _apiClient = ApiClient();
 
-  // Get client's jobs
+  // **NEW**: Get available jobs for contractors (active jobs)
+  Future<List<JobResponse>> getAvailableJobs({
+    int limit = 5,
+    int page = 0,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'size': limit.toString(),
+        'status': 'ACTIVE', // Only show active jobs for contractors
+      };
+
+      final response = await _apiClient.gets(
+        ApiEndpoints.activeJobs,
+        queryParameters: queryParams,
+      );
+
+      if (!response.containsKey('data')) {
+        throw Exception('Invalid API response: missing data field');
+      }
+
+      final data = response['data'];
+
+      if (data is List<dynamic>) {
+        return _parseJobsFromList(data);
+      } else if (data is Map<String, dynamic>) {
+        return _extractJobsFromMap(data);
+      } else {
+        throw Exception('Unexpected data type: ${data.runtimeType}');
+      }
+    } catch (e) {
+      print('Error loading available jobs: $e');
+      rethrow;
+    }
+  }
+
+  // **NEW**: Get client's jobs with specific statuses
+  Future<List<JobResponse>> getClientJobs({
+    List<String>? statuses,
+    int limit = 5,
+    int page = 0,
+  }) async {
+    try {
+      // First get all client jobs
+      final allJobs = await getMyJobs(page: page, size: limit);
+
+      // Filter by status if provided
+      if (statuses != null && statuses.isNotEmpty) {
+        return allJobs.where((job) {
+          return statuses.contains(job.status?.name.toUpperCase());
+        }).toList();
+      }
+
+      return allJobs;
+    } catch (e) {
+      print('Error loading client jobs: $e');
+      rethrow;
+    }
+  }
+
+  // Existing method - Get client's jobs
   Future<List<JobResponse>> getMyJobs({
     JobStatus? status,
     String? searchQuery,
@@ -143,7 +203,7 @@ class JobsService extends GetxService {
     }
   }
 
-  // lib/core/services/jobs_service.dart - Update getJobStats method
+  // Get job statistics
   Future<Map<String, dynamic>> getJobStats() async {
     try {
       final response = await _apiClient.get('${ApiEndpoints.myJobs}/stats');

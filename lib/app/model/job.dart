@@ -20,7 +20,7 @@ enum TradeCategory {
 enum BudgetType {
   DAILY,
   FIXED,
-  HOURLY
+  HOURLY, RANGE
 }
 
 enum UrgencyLevel {
